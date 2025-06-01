@@ -18,17 +18,51 @@
         .recipe-card {
             box-shadow: 0 4px 12px rgba(0,0,0,0.1);
             border: none;
+            display: flex; /* Use flexbox for card body */
+            flex-direction: column; /* Stack content vertically */
+        }
+        .recipe-card .card-body {
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between; /* Pushes button to bottom */
+            height: 100%; /* Ensure card body takes full height */
+        }
+        .recipe-card .card-text {
+            flex-grow: 1; /* Allows text to take available space */
+            margin-bottom: 1rem; /* Space before the button */
+        }
+        .saved-recipes-icon {
+            font-size: 1.8rem;
+            color: #dc3545;
+            margin-right: 15px;
+        }
+        .navbar-brand {
+            display: flex;
+            align-items: center;
         }
     </style>
 </head>
 <body>
-<div class="container">
+<nav class="navbar navbar-expand-lg navbar-light bg-light fixed-top">
+    <div class="container">
+        <a class="navbar-brand" href="{% url 'home_view' %}">
+            <span class="me-2">🍲</span> AI Recipe Suggester
+        </a>
+        <div class="d-flex ms-auto">
+            <a href="{% url 'saved_recipes' %}" class="nav-link saved-recipes-icon" aria-label="Saved Recipes">
+                ❤️
+            </a>
+        </div>
+    </div>
+</nav>
+
+<div class="container" style="padding-top: 60px;">
     <h1 class="text-center mb-4">🍲 AI Recipe Suggester</h1>
 
     <form method="POST" class="mb-5">
         {% csrf_token %}
         <div class="input-group">
-            <input type="text" class="form-control" name="ingredients" placeholder="Enter ingredients (e.g. tomato, cheese, pasta)" required>
+            <input type="text" class="form-control" name="ingredients" placeholder="Enter ingredients (e.g. tomato, cheese, pasta)" required value="{{ ingredients_searched|default:'' }}">
             <button class="btn btn-primary" type="submit">Get Recipes</button>
         </div>
     </form>
@@ -39,15 +73,27 @@
                 <div class="card recipe-card h-100">
                     <img src="{{ recipe.image }}" class="card-img-top" alt="{{ recipe.title }}">
                     <div class="card-body">
-                        <h5 class="card-title">{{ recipe.title }}</h5>
-                        <h6>Ingredients:</h6>
-                        <ul class="list-unstyled mb-2">
-                            {% for ing in recipe.extendedIngredients %}
-                                <li>• {{ ing.original }}</li>
-                            {% endfor %}
-                        </ul>
-                        <h6>Instructions:</h6>
-                        <p class="card-text">{{ recipe.instructions|safe|truncatewords:30 }}</p>
+                        <div>
+                            <h5 class="card-title">{{ recipe.title }}</h5>
+                            <h6>Ingredients:</h6>
+                            <ul class="list-unstyled mb-2">
+                                {% for ing in recipe.extendedIngredients %}
+                                    <li>• {{ ing.original }}</li>
+                                {% endfor %}
+                            </ul>
+                            <h6>Instructions:</h6>
+                            <p class="card-text">{{ recipe.instructions|safe|truncatewords:30 }}</p>
+                        </div>
+                        <form action="{% url 'save_recipe' %}" method="post" class="mt-auto align-self-start">
+                            {% csrf_token %}
+                            <input type="hidden" name="recipe_id" value="{{ recipe.id }}">
+                            <input type="hidden" name="recipe_title" value="{{ recipe.title }}">
+                            <input type="hidden" name="recipe_image" value="{{ recipe.image }}">
+                            <input type="hidden" name="recipe_instructions" value="{{ recipe.instructions|safe }}">
+                            {# ADD THIS LINE TO PASS THE ORIGINAL SEARCH INGREDIENTS #}
+                            <input type="hidden" name="original_ingredients" value="{{ ingredients_searched }}">
+                            <button type="submit" class="btn btn-success btn-sm">Save</button>
+                        </form>
                     </div>
                 </div>
             </div>
