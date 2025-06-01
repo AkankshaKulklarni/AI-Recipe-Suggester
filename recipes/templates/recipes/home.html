@@ -18,18 +18,18 @@
         .recipe-card {
             box-shadow: 0 4px 12px rgba(0,0,0,0.1);
             border: none;
-            display: flex; /* Use flexbox for card body */
-            flex-direction: column; /* Stack content vertically */
+            display: flex;
+            flex-direction: column;
         }
         .recipe-card .card-body {
             display: flex;
             flex-direction: column;
-            justify-content: space-between; /* Pushes button to bottom */
-            height: 100%; /* Ensure card body takes full height */
+            justify-content: space-between;
+            height: 100%;
         }
         .recipe-card .card-text {
-            flex-grow: 1; /* Allows text to take available space */
-            margin-bottom: 1rem; /* Space before the button */
+            flex-grow: 1;
+            margin-bottom: 1rem;
         }
         .saved-recipes-icon {
             font-size: 1.8rem;
@@ -84,15 +84,13 @@
                             <h6>Instructions:</h6>
                             <p class="card-text">{{ recipe.instructions|safe|truncatewords:30 }}</p>
                         </div>
-                        <form action="{% url 'save_recipe' %}" method="post" class="mt-auto align-self-start">
+                        <form class="save-recipe-form mt-auto align-self-start"
+                              data-recipe-id="{{ recipe.id }}"
+                              data-recipe-title="{{ recipe.title }}"
+                              data-recipe-image="{{ recipe.image }}"
+                              data-recipe-instructions="{{ recipe.instructions|safe }}">
                             {% csrf_token %}
-                            <input type="hidden" name="recipe_id" value="{{ recipe.id }}">
-                            <input type="hidden" name="recipe_title" value="{{ recipe.title }}">
-                            <input type="hidden" name="recipe_image" value="{{ recipe.image }}">
-                            <input type="hidden" name="recipe_instructions" value="{{ recipe.instructions|safe }}">
-                            {# ADD THIS LINE TO PASS THE ORIGINAL SEARCH INGREDIENTS #}
-                            <input type="hidden" name="original_ingredients" value="{{ ingredients_searched }}">
-                            <button type="submit" class="btn btn-success btn-sm">Save</button>
+                            <button type="submit" class="btn btn-success btn-sm save-recipe-btn">Save</button>
                         </form>
                     </div>
                 </div>
@@ -102,5 +100,59 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+    // Get all save recipe forms
+    const saveForms = document.querySelectorAll('.save-recipe-form');
+
+    saveForms.forEach(form => {
+        form.addEventListener('submit', function(event) {
+            event.preventDefault(); // Prevent default form submission (page reload)
+
+            const button = this.querySelector('.save-recipe-btn'); // Get the specific button clicked
+            const csrfToken = this.querySelector('[name="csrfmiddlewaretoken"]').value;
+
+            // Extract recipe data from data attributes on the form
+            const recipeId = this.dataset.recipeId;
+            const recipeTitle = this.dataset.recipeTitle;
+            const recipeImage = this.dataset.recipeImage;
+            const recipeInstructions = this.dataset.recipeInstructions;
+
+            // Create FormData object
+            const formData = new FormData();
+            formData.append('csrfmiddlewaretoken', csrfToken);
+            formData.append('recipe_id', recipeId);
+            formData.append('recipe_title', recipeTitle);
+            formData.append('recipe_image', recipeImage);
+            formData.append('recipe_instructions', recipeInstructions);
+
+            // Send AJAX request
+            fetch("{% url 'save_recipe' %}", {
+                method: 'POST',
+                body: formData,
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest', // Important for Django's is_ajax() check (though often not strictly needed anymore)
+                },
+            })
+            .then(response => response.json()) // Parse JSON response
+            .then(data => {
+                if (data.status === 'success' || data.status === 'info') {
+                    // Change button text and color
+                    button.textContent = 'Saved';
+                    button.classList.remove('btn-success');
+                    button.classList.add('btn-secondary'); // Grey color
+                    button.disabled = true; // Disable the button after saving
+                    console.log(data.message); // Log success or info message
+                } else {
+                    console.error('Error saving recipe:', data.message);
+                    alert('Failed to save recipe: ' + data.message); // Show an alert on error
+                }
+            })
+            .catch(error => {
+                console.error('Network or server error:', error);
+                alert('An error occurred while trying to save the recipe.');
+            });
+        });
+    });
+</script>
 </body>
 </html>
